@@ -1,0 +1,5 @@
+.venv
+*.log
+*.egg-info
+__pycache__
+arquivo_geral.csv
