@@ -3,6 +3,7 @@ import os
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from time import sleep
+from selenium.webdriver.firefox.options import Options
 
 # Note: Install the gecko driver in arch with
 # sudo pacman -S geckodriver
@@ -22,10 +23,13 @@ profile.set_preference('browser.download.manager.showWhenStarting', False)
 profile.set_preference('browser.download.dir', os.getcwd())
 profile.set_preference('browser.helperApps.neverAsk.saveToDisk', 'text/csv')
 
+options = Options()
+options.headless = True
+
 # Create a driver and load the webpage -> This blocks until the page
 # You need to install a driver. I'm using a driver for firefox
 # See here https://selenium-python.readthedocs.io/installation.html#drivers
-driver = webdriver.Firefox(profile)
+driver = webdriver.Firefox(profile, options = options)
 driver.get(URL)
 
 # The webpage uses shadow-dom in several places, but we can get the download
