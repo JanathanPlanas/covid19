@@ -3,3 +3,4 @@
 *.egg-info
 __pycache__
 arquivo_geral.csv
+arquivo_geral_old.csv
