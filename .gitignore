@@ -1,6 +1,8 @@
 .venv
 *.log
 *.egg-info
+.ipynb_checkpoints
+.virtual_documents
 __pycache__
 arquivo_geral.csv
 arquivo_geral_old.csv

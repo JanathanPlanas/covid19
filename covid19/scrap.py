@@ -35,6 +35,7 @@ def _download_covid_data():
     # Create a driver and load the webpage -> This blocks until the page
     # You need to install a driver. I'm using a driver for firefox
     # See here https://selenium-python.readthedocs.io/installation.html#drivers
+    # In Arch Linux you can install driver for firefox with `sudo pacman -Sy geckodriver`
     driver = webdriver.Firefox(profile, options = options)
     driver.get(URL)
 
@@ -95,6 +96,9 @@ def get_covid_data():
     If the data exists on disk, but the most recent date in the file is not
     today, then download new data.
     """
+    download_log_file = "last_download_time.log"
+    format_string = "%Y-%m-%d, %H:%M:%S"
+
     filepath = Path("arquivo_geral.csv")
     if filepath.exists():
         data = _read_datafile_from_disc()
@@ -105,8 +109,25 @@ def get_covid_data():
         if file_is_current:
             logging.info("There is an existing file on disk with is current: using it")
             return data
+        else:
+            # If the file is not current check the log file to see if it was
+            # downloaded lesss the one hour ago
+            try:
+                with open(download_log_file, mode="r") as f:
+                    last_download_time = datetime.datetime.strptime(f.read(), format_string)
+                    now = datetime.datetime.now()
+                    now - last_download_time
+                    if (now - last_download_time) < datetime.timedelta(minutes=60):
+                        # The file is not current, but it was downloaded less
+                        # than one hour ago. Let's use it
+                        logging.warning("The existing file on disk is not current, but it was downloaded less than one hour ago and we will use it")
+                        return data
+            except FileNotFoundError:
+                pass
 
-        # data is not current
+        # If we reach this point the file exists in the disk, but it is not
+        # current and it was downloaded more then one hour ago -> Let's try
+        # downloading a new file then
         del data
 
         logging.warning("The existing file on disk is not current -> We will try downloading a new one")
@@ -122,8 +143,14 @@ def get_covid_data():
         # Download the file
         _download_covid_data()
 
+        # Save the current time to a log file
+        with open(download_log_file, mode="w") as f:
+            now = datetime.datetime.now()
+            f.write(now.strftime(format_string))
+
         # The data in the
-        return _read_datafile_from_disc()
+        data = _read_datafile_from_disc()
+        return data
 
     except TimeoutError:
         logging.warn("Could not download data from internet -> An old file will be used instead")
