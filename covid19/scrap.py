@@ -65,6 +65,7 @@ def _download_covid_data():
             logging.info(f"The file was downloaded in {now - start} seconds")
             break
         else:
+            now = time()
             sleep(1)
     else:
         # The while loop run until the end and entered the if
@@ -82,8 +83,22 @@ def _conv_date(x):
     """Convert a string in the `date` column into a `date` object"""
     return datetime.datetime.strptime(x.data, "%Y-%m-%d").date()
 
-def _read_datafile_from_disc(filename="arquivo_geral.csv"):
-    data = pd.read_csv(filename, sep=';' , encoding='latin-1')
+def read_datafile_from_disc(filename):
+    """
+    Read the file with data from the disk
+
+    Parameters
+    ----------
+    filename : str
+        The name of the file with the data
+
+    Returns
+    -------
+    pd.Dataframe
+        A pandas Dataframe with the data
+    """
+    # data = pd.read_csv(filename, sep=';' , encoding='latin-1')
+    data = pd.read_excel(filename)
     data["data"] = data.apply(_conv_date, axis=1)
 
     return data
@@ -101,7 +116,7 @@ def get_covid_data():
 
     filepath = Path("arquivo_geral.csv")
     if filepath.exists():
-        data = _read_datafile_from_disc()
+        data = read_datafile_from_disc()
 
         today = datetime.datetime.today().date()
         file_is_current = data.data.iloc[-1] == today
@@ -149,11 +164,11 @@ def get_covid_data():
             f.write(now.strftime(format_string))
 
         # The data in the
-        data = _read_datafile_from_disc()
+        data = read_datafile_from_disc()
         return data
 
     except TimeoutError:
         logging.warn("Could not download data from internet -> An old file will be used instead")
 
         # Could not download a new file. Let's use the old one in the disk
-        return _read_datafile_from_disc("arquivo_geral_old.csv")
+        return read_datafile_from_disc("arquivo_geral_old.csv")

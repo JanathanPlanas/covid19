@@ -12,6 +12,9 @@ class TestCovid19(unittest.TestCase):
     def test_version(self):
         assert __version__ == '0.1.0'
 
+    def test_get_covid_data(self):
+        data = get_covid_data()
+
     def test_get_date_date_cases_greater_than(self):
         data = _read_datafile_from_disc()
 
