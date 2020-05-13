@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 from time import sleep, time
 
+import glob
+
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -15,6 +17,8 @@ from selenium.webdriver.firefox.options import Options
 # https://mobileapps.saude.gov.br/esus-vepi/files/unAFkcaNDeXajurGB7LChj8SgQYS2ptm/1d2b944e065c7304b2754cc386635e38_Download_COVID19_20200430.csv
 # https://mobileapps.saude.gov.br/esus-vepi/files/unAFkcaNDeXajurGB7LChj8SgQYS2ptm/b7ac2be9055d75727e05608cb181cc74_Download_COVID19_20200504.csv
 
+_data_filename = "dados.xlsx"
+
 
 def _download_covid_data():
     """Download covid data from the internet"""
@@ -22,12 +26,14 @@ def _download_covid_data():
 
     # Create a profile and set some preferences to prevent download dialog
     profile = webdriver.FirefoxProfile()
-    profile.set_preference('browser.download.folderList', 2) # custom location
+    profile.set_preference('browser.download.folderList', 2)  # custom location
     profile.set_preference('browser.download.manager.showWhenStarting', False)
     # The value is the folder where to download to. We are setting the download
     # folder as the current folder of the python interpreter by using 'os.getcwd'
     profile.set_preference('browser.download.dir', os.getcwd())
-    profile.set_preference('browser.helperApps.neverAsk.saveToDisk', 'text/csv')
+    profile.set_preference(
+        'browser.helperApps.neverAsk.saveToDisk',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
     options = Options()
     options.headless = True
@@ -36,40 +42,64 @@ def _download_covid_data():
     # You need to install a driver. I'm using a driver for firefox
     # See here https://selenium-python.readthedocs.io/installation.html#drivers
     # In Arch Linux you can install driver for firefox with `sudo pacman -Sy geckodriver`
-    driver = webdriver.Firefox(profile, options = options)
+    driver = webdriver.Firefox(profile, options=options)
     driver.get(URL)
 
     # The webpage uses shadow-dom in several places, but we can get the download
     # button by get all "button"s from the page
-    buttons = driver.find_elements_by_class_name("button")
+    # buttons = driver.find_elements_by_class_name("button")
 
-    # The download button is the third one (index 2)
-    download_button = buttons[2]
+    # Everything in the app (except the navbar) is in a tag with name "ion-content"
+    ion_content = driver.find_element_by_tag_name("ion-content")
+
+    # The first "div" in the ion-content tag has the download button
+    first_div = ion_content.find_element_by_tag_name("div")
+
+    # There is a single "button" in this div, which is the download button
+    download_button = first_div.find_element_by_class_name("button")
+
+    # # The download button is the third one (index 2)
+    # download_button = buttons[2]
 
     # When we run this script we should wait a bit before clicking the download
     # button. I'm waiting 2 seconds to be safe
-    sleep(2.0)
-
-    # Click the button
-    download_button.click()
+    sleep(5.0)
 
     start = time()
     now = time()
     ONE_MINUTE = 60.0
-    filepath = Path("arquivo_geral.csv")
-    # If we close the driver to quickly the window will be closed before the
-    # download is finished. We will check that the file was downloaded and if
-    # not sleep for one second.
-    while now - start < ONE_MINUTE:
-        if filepath.exists():
-            logging.info(f"The file was downloaded in {now - start} seconds")
+
+    # Click the button
+    download_button.click()
+
+    # Read all ".xlsx" files in the current folder and check if the modification
+    # time of any of them is greater than 'start'. The first ".xlsx" file with
+    # modification time greater than 'start' is assumed to be the downloaded
+    # file. If there is no file with modification date after 'start' then we
+    # assume the file was not downloaded yet.
+    while (now - start < ONE_MINUTE):
+        files = glob.glob("*.xlsx")
+
+        if len(files) == 0:
+            sleep(1)
+            now = time()
+            continue
+
+        # Sort files in descending order by timestamp
+        files = sorted(files, key=lambda x: os.path.getmtime(x), reverse=True)
+        most_current_timestamp = os.path.getmtime(files[0])
+        if most_current_timestamp > start:
+            # This will break the outer while loop
+            os.rename(files[0], _data_filename)
+            # This will break the while loop
             break
         else:
+            # If the for loop didn't break, sleep for one second
             now = time()
             sleep(1)
     else:
-        # The while loop run until the end and entered the if
-        # print("Timeout: the file was not downloaded")
+        # The while loop run until the end -> That means the file was not
+        # downloaded within one minute
         raise TimeoutError("Could not download the file in under a minute")
 
     # Sleep before closing the driver to allow time for the download.
@@ -83,7 +113,8 @@ def _conv_date(x):
     """Convert a string in the `date` column into a `date` object"""
     return datetime.datetime.strptime(x.data, "%Y-%m-%d").date()
 
-def read_datafile_from_disc(filename):
+
+def read_datafile_from_disc(filename=_data_filename):
     """
     Read the file with data from the disk
 
@@ -114,7 +145,7 @@ def get_covid_data():
     download_log_file = "last_download_time.log"
     format_string = "%Y-%m-%d, %H:%M:%S"
 
-    filepath = Path("arquivo_geral.csv")
+    filepath = Path(_data_filename)
     if filepath.exists():
         data = read_datafile_from_disc()
 
@@ -122,20 +153,25 @@ def get_covid_data():
         file_is_current = data.data.iloc[-1] == today
 
         if file_is_current:
-            logging.info("There is an existing file on disk with is current: using it")
+            logging.info(
+                "There is an existing file on disk with is current: using it")
             return data
         else:
             # If the file is not current check the log file to see if it was
             # downloaded lesss the one hour ago
             try:
                 with open(download_log_file, mode="r") as f:
-                    last_download_time = datetime.datetime.strptime(f.read(), format_string)
+                    last_download_time = datetime.datetime.strptime(
+                        f.read(), format_string)
                     now = datetime.datetime.now()
                     now - last_download_time
-                    if (now - last_download_time) < datetime.timedelta(minutes=60):
+                    if (now - last_download_time) < datetime.timedelta(
+                            minutes=60):
                         # The file is not current, but it was downloaded less
                         # than one hour ago. Let's use it
-                        logging.warning("The existing file on disk is not current, but it was downloaded less than one hour ago and we will use it")
+                        logging.warning(
+                            "The existing file on disk is not current, but it was downloaded less than one hour ago and we will use it"
+                        )
                         return data
             except FileNotFoundError:
                 pass
@@ -145,11 +181,12 @@ def get_covid_data():
         # downloading a new file then
         del data
 
-        logging.warning("The existing file on disk is not current -> We will try downloading a new one")
+        logging.warning(
+            "The existing file on disk is not current -> We will try downloading a new one"
+        )
 
         # Backup current file
         filepath.rename("arquivo_geral_old.csv")
-
 
     # A file does not exist on disk or the one that existed was old and was
     # renamed
@@ -168,7 +205,9 @@ def get_covid_data():
         return data
 
     except TimeoutError:
-        logging.warn("Could not download data from internet -> An old file will be used instead")
+        logging.warn(
+            "Could not download data from internet -> An old file will be used instead"
+        )
 
         # Could not download a new file. Let's use the old one in the disk
         return read_datafile_from_disc("arquivo_geral_old.csv")
