@@ -6,3 +6,5 @@
 __pycache__
 arquivo_geral.csv
 arquivo_geral_old.csv
+*_cache
+dados.xlsx

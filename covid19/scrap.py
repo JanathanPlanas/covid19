@@ -18,6 +18,7 @@ from selenium.webdriver.firefox.options import Options
 # https://mobileapps.saude.gov.br/esus-vepi/files/unAFkcaNDeXajurGB7LChj8SgQYS2ptm/b7ac2be9055d75727e05608cb181cc74_Download_COVID19_20200504.csv
 
 _data_filename = "dados.xlsx"
+_data_filename_old = "dados_old.xlsx"
 
 
 def _download_covid_data():
@@ -81,6 +82,7 @@ def _download_covid_data():
         files = glob.glob("*.xlsx")
 
         if len(files) == 0:
+            logging.info("No files downloaded so far: sleeping for 1 second")
             sleep(1)
             now = time()
             continue
@@ -91,9 +93,14 @@ def _download_covid_data():
         if most_current_timestamp > start:
             # This will break the outer while loop
             os.rename(files[0], _data_filename)
+
+            logging.info("The download was finished!")
+
             # This will break the while loop
             break
         else:
+            logging.info(
+                "The download was not finished yet: sleeping for 1 second")
             # If the for loop didn't break, sleep for one second
             now = time()
             sleep(1)
@@ -116,7 +123,9 @@ def _conv_date(x):
 
 def read_datafile_from_disc(filename=_data_filename):
     """
-    Read the file with data from the disk
+    Read the file with data from the disk.
+
+    Note that one extra column is added: "diaDaSemana"
 
     Parameters
     ----------
@@ -131,6 +140,11 @@ def read_datafile_from_disc(filename=_data_filename):
     # data = pd.read_csv(filename, sep=';' , encoding='latin-1')
     data = pd.read_excel(filename)
     data["data"] = data.apply(_conv_date, axis=1)
+
+    weekDays = ("Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado",
+                "Domingo")
+    data["diaDaSemana"] = data.apply(lambda x: weekDays[x.data.weekday()],
+                                     axis=1)
 
     return data
 
@@ -154,7 +168,8 @@ def get_covid_data():
 
         if file_is_current:
             logging.info(
-                "There is an existing file on disk with is current: using it")
+                "There is an existing file on disk and it is current: using it"
+            )
             return data
         else:
             # If the file is not current check the log file to see if it was
@@ -186,7 +201,7 @@ def get_covid_data():
         )
 
         # Backup current file
-        filepath.rename("arquivo_geral_old.csv")
+        filepath.rename(_data_filename_old)
 
     # A file does not exist on disk or the one that existed was old and was
     # renamed
@@ -205,9 +220,12 @@ def get_covid_data():
         return data
 
     except TimeoutError:
-        logging.warn(
-            "Could not download data from internet -> An old file will be used instead"
-        )
+        logging.warning("Could not download data from internet")
 
-        # Could not download a new file. Let's use the old one in the disk
-        return read_datafile_from_disc("arquivo_geral_old.csv")
+        filepath = Path(_data_filename_old)
+        if filepath.exists():
+            # Could not download a new file. Let's use the old one in the disk
+            logging.warning("Using an old data file")
+            return read_datafile_from_disc(_data_filename_old)
+        else:
+            raise TimeoutError("Could not download data from the internet")
