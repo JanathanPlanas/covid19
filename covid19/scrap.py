@@ -1,10 +1,9 @@
 import datetime
+import glob
 import logging
 import os
 from pathlib import Path
 from time import sleep, time
-
-import glob
 
 import pandas as pd
 from selenium import webdriver

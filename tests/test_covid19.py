@@ -1,13 +1,14 @@
-from covid19 import __version__
 import unittest
-import pandas as pd
-from covid19.covid import get_date_date_cases_greater_than, get_dia_de_contaminacao_array
-from covid19.scrap import get_covid_data, read_datafile_from_disc
-
-from datetime import datetime, date
-
+from datetime import date, datetime
 from pathlib import Path
+
 import numpy as np
+import pandas as pd
+
+from covid19 import __version__
+from covid19.covid import (get_date_date_cases_greater_than,
+                           get_dia_de_contaminacao_array)
+from covid19.scrap import get_covid_data, read_datafile_from_disc
 
 
 class TestCovid19(unittest.TestCase):
