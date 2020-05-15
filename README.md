@@ -26,3 +26,4 @@ client part and client-only extensions.
 - jupyterlab-jupytext                    ->  Also with server extension
 - @bokeh/jupyter_bokeh
 - jupyterlab-lsp                         ->  Also with server extension (jupyterlab-lsp and python-language-server[all])
+- qgrid2
