@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import pandas as pd
 
@@ -98,6 +100,17 @@ def get_brazil_data(df: pd.DataFrame):
         Um DataFrame contendo os dados apenas do Brasil.
     """
     data_brasil = df.query("regiao=='Brasil'").copy()
+
+    # xxxxxxxxxx Cleaning xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    # In case of multiple rows with the same date, drop all except the first
+    duplicated_bool_mask = data_brasil.duplicated("data")
+    if sum(duplicated_bool_mask) > 0:
+        logging.warning(
+            "There are duplicated dates in Brazil data -> dropping all except the first one"
+        )
+        data_brasil = data_brasil[~duplicated_bool_mask]
+    # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
     data_brasil["casosNovos"] = np.diff(data_brasil.casosAcumulado, prepend=0)
     data_brasil["obitosNovos"] = np.diff(data_brasil.obitosAcumulado,
                                          prepend=0)
@@ -144,6 +157,16 @@ def get_all_states_data(df: pd.DataFrame):
     """
     data_estados = df[df.codmun.isna()
                       & np.logical_not(df.estado.isna())].copy()
+
+    # xxxxxxxxxx Cleaning xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    # In case of multiple rows with the same date, drop all except the first
+    duplicated_bool_mask = data_estados.duplicated(["estado", "data"])
+    if sum(duplicated_bool_mask) > 0:
+        logging.warning(
+            "There are duplicated dates in All States data -> dropping all except the first one"
+        )
+        data_estados = data_estados[~duplicated_bool_mask]
+    # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
     estados = data_estados.estado.unique()
 

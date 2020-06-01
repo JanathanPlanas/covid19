@@ -117,7 +117,10 @@ def _download_covid_data():
 
 def _conv_date(x):
     """Convert a string in the `date` column into a `date` object"""
-    return datetime.datetime.strptime(x.data, "%Y-%m-%d").date()
+    try:
+        return datetime.datetime.strptime(x.data, "%Y-%m-%d").date()
+    except TypeError:
+        return None
 
 
 def read_datafile_from_disc(filename=_data_filename):
@@ -139,6 +142,11 @@ def read_datafile_from_disc(filename=_data_filename):
     # data = pd.read_csv(filename, sep=';' , encoding='latin-1')
     data = pd.read_excel(filename)
     data["data"] = data.apply(_conv_date, axis=1)
+
+    # xxxxxxxxxx Cleaning xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    # Drop lines without a date (these are empty lines in the data)
+    data = data[~data.data.isna()]
+    # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
     weekDays = ("Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado",
                 "Domingo")
@@ -183,7 +191,7 @@ def get_covid_data():
                             minutes=60):
                         # The file is not current, but it was downloaded less
                         # than one hour ago. Let's use it
-                        logging.warning(
+                        logging.info(
                             "The existing file on disk is not current, but it was downloaded less than one hour ago and we will use it"
                         )
                         return data

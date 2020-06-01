@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 
 from covid19 import __version__
-from covid19.covid import (get_date_date_cases_greater_than,
+from covid19.covid import (get_all_states_data, get_brazil_data,
+                           get_date_date_cases_greater_than,
                            get_dia_de_contaminacao_array)
 from covid19.scrap import get_covid_data, read_datafile_from_disc
 
@@ -16,7 +17,8 @@ class TestCovid19(unittest.TestCase):
         assert __version__ == '0.1.0'
 
     # def test_get_covid_data(self):
-    #     data = get_covid_data()
+    # data = get_covid_data()
+    # pass
 
     def test_get_date_date_cases_greater_than(self):
         # Brasil
@@ -88,8 +90,23 @@ class TestCovid19(unittest.TestCase):
              np.arange(1, 58 - 20, dtype=int)])
         np.testing.assert_array_equal(array, expected_array)
 
-    def test_get_state_data(self):
-        pass
+    def test_get_brazil_data(self):
+        data = get_covid_data()
+        data_brazil = get_brazil_data(data)
+
+        # The data should not have two rows with the same "data"
+        self.assertEqual(sum(data_brazil.duplicated(["data"])), 0)
+
+    def test_get_all_states_data(self):
+        data = get_covid_data()
+        data_all_states = get_all_states_data(data)
+
+        # The data should not have two rows with the same "data" and "estado"
+        self.assertEqual(sum(data_all_states.duplicated(["estado", "data"])),
+                         0)
+
+    # def test_get_state_data(self):
+    #     pass
 
 
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
