@@ -33,6 +33,7 @@ mypy = "^0.770"
 pudb = "^2019.2"
 pip = "^20.1"
 pre-commit = "^2.4.0"
+darglint = "^1.4.1"
 
 [build-system]
 requires = ["poetry>=0.12"]
