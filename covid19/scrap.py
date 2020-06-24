@@ -115,10 +115,18 @@ def _download_covid_data():
     driver.close()
 
 
+# def _conv_date(x):
+#     """Convert a string in the `date` column into a `date` object"""
+#     try:
+#         return datetime.datetime.strptime(x.data, "%Y-%m-%d").date()
+#     except TypeError:
+#         return None
+
+
 def _conv_date(x):
     """Convert a string in the `date` column into a `date` object"""
     try:
-        return datetime.datetime.strptime(x.data, "%Y-%m-%d").date()
+        return x.data.date()
     except TypeError:
         return None
 
